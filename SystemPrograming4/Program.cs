@@ -21,19 +21,23 @@ namespace SystemPrograming4
                 (startRange, endRange) = (endRange, startRange);
             }
 
+            Console.Write("Enter number of threads: ");
+            int threadCount = Convert.ToInt32(Console.ReadLine());
+
             Console.WriteLine("Starting threads...");
 
-            int rangeCount = endRange - startRange + 1;
-            Thread[] threads = new Thread[rangeCount];
+            int rangePerThread = (endRange - startRange + 1) / threadCount;
+            Thread[] threads = new Thread[threadCount];
 
-            for (int i = startRange; i <= endRange; i++)
+            for (int i = 0; i < threadCount; i++)
             {
-                int number = i; // Capture the current value of i
-                threads[i - startRange] = new Thread(() => PrintNumberSequentially(number));
-                threads[i - startRange].Start();
+                int threadStart = startRange + i * rangePerThread;
+                int threadEnd = (i == threadCount - 1) ? endRange : threadStart + rangePerThread - 1;
+
+                threads[i] = new Thread(() => PrintRange(threadStart, threadEnd));
+                threads[i].Start();
             }
 
-            // Wait for all threads to complete
             foreach (var thread in threads)
             {
                 thread.Join();
@@ -42,20 +46,22 @@ namespace SystemPrograming4
             Console.WriteLine("All threads completed.");
         }
 
-        static void PrintNumberSequentially(int number)
+        static void PrintRange(int start, int end)
         {
             lock (_lockObject)
             {
-                // Ensure numbers are printed in the correct sequence
-                while (_current != number - 1)
+                for (int i = start; i <= end; i++)
                 {
-                    Monitor.Wait(_lockObject);
-                }
+                    // Ensure the output is in sequence
+                    while (_current != i - 1)
+                    {
+                        Monitor.Wait(_lockObject);
+                    }
 
-                // Print thread name (ID) and the number
-                Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} processed number: {number}");
-                _current = number;
-                Monitor.PulseAll(_lockObject);
+                    Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} processed number: {i}");
+                    _current = i;
+                    Monitor.PulseAll(_lockObject);
+                }
             }
         }
     }
